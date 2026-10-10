@@ -121,11 +121,13 @@ export function createApplication(dataDir) {
     await new Promise((resolve,reject) => { server.once('error', reject); server.listen(requestedPort, '127.0.0.1', resolve); }); port = server.address().port; engine.start(); return port;
   }, async close() { engine.stop(); vault.lock(); await new Promise(resolve => server.close(resolve)); store.close(); } };
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+export async function startLocalApplication() {
   const dir = process.env.ARB_DATA_DIR || join(homedir(), '.dualchain-arb');
   const app = createApplication(dir);
   const port = await app.listen(Number(process.env.PORT || 0));
   console.log(`双链同币套利 · 本机地址 http://127.0.0.1:${port}`);
   console.log(`数据目录：${dir}；默认模拟模式；重启后须重新解锁钱包并启用自动执行。`);
   for (const signal of ['SIGINT','SIGTERM']) process.on(signal, async () => { app.engine.pause('进程退出，未结算任务重启后须核对', app.engine.active); app.engine.stop(); await new Promise(resolve => app.server.close(resolve)); app.vault.lock(); app.store.close(); process.exit(0); });
+  return app;
 }
+if (process.argv[1] === fileURLToPath(import.meta.url)) await startLocalApplication();

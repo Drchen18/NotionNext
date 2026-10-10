@@ -25,3 +25,23 @@ test('local HTTP app: origin/session/CSRF guards, note pagination, key confident
   while(app.engine.busy)await new Promise(r=>setTimeout(r,30));
   assert.equal(app.store.list().total,1);assert.equal(app.store.job(key).state,'COMPLETED');assert.equal(app.store.limits('paper').executions,1);
 });
+
+test('standalone entry starts through a symlink and prints a usable local URL',async t=>{
+  const {spawn}=await import('node:child_process');
+  const {symlinkSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const dir=mkdtempSync(join(tmpdir(),'chain-arb-start-'));
+  const original=fileURLToPath(new URL('../src/start.js',import.meta.url));
+  const entry=process.platform==='win32'?original:join(dir,'entry.js');
+  if(process.platform!=='win32')symlinkSync(original,entry);
+  const child=spawn(process.execPath,[entry],{env:{...process.env,ARB_DATA_DIR:join(dir,'data'),PORT:'0'},stdio:['ignore','pipe','pipe']});
+  t.after(async()=>{if(child.exitCode===null&&child.signalCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}rmSync(dir,{recursive:true,force:true});});
+  const url=await new Promise((resolve,reject)=>{
+    let output='',errors='';const timer=setTimeout(()=>reject(new Error('Startup timeout: '+output+errors)),10000);
+    child.stderr.on('data',data=>{errors+=data.toString();});
+    child.stdout.on('data',data=>{output+=data.toString();const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match){clearTimeout(timer);resolve(match[0]);}});
+    child.once('exit',code=>{clearTimeout(timer);reject(new Error('Startup exited: '+code+' '+output+errors));});
+    child.once('error',error=>{clearTimeout(timer);reject(error);});
+  });
+  const response=await fetch(url);assert.equal(response.status,200);assert.match(await response.text(),/ChainDesk/);
+});

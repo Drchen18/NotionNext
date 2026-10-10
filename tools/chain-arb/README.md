@@ -13,6 +13,8 @@ npm start
 
 也可以运行 `start.sh`（macOS/Linux）或 `start.cmd`（Windows）。首次运行会安装锁定的依赖。服务只监听 `127.0.0.1`，自动由操作系统分配空闲端口；终端显示本机访问地址。关闭终端或 Ctrl+C 停止服务。
 
+启动入口为 `src/start.js`，不依赖 Windows 路径大小写或符号链接匹配。若 npm 启动后没有输出，可在本目录直接执行 `node src/start.js`；应先显示“ChainDesk 正在启动”，随后显示网址或明确的启动错误。
+
 默认数据目录是用户目录下 `.dualchain-arb`，与源代码分开。可用 `ARB_DATA_DIR` 指定其他目录；可用 `PORT` 指定端口，不指定时自动选择。不要在同一数据目录同时启动两个实例。
 
 ### Windows 11 安装程序失败时
